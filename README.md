@@ -1,50 +1,97 @@
 # pod-api
 
-Node/Express/TypeScript backend for the print-on-demand sport fishing & yacht merchandise storefront.
+Node/Express/TypeScript/Drizzle backend for the print-on-demand sport fishing & yacht merchandise storefront.
 
 ---
 
-## Install
+## Prerequisites
+
+- [Node.js 20+](https://nodejs.org)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — must be running before any `docker compose` command
+
+---
+
+## Local development setup
+
+### 1. Install dependencies
 
 ```bash
-cd pod-api
 npm install
 ```
 
----
-
-## Environment variables
-
-Copy the example file and fill in your secrets:
+### 2. Set up environment variables
 
 ```bash
 cp .env.example .env
 ```
+
+Fill in `.env` with your Printful API key, S3/R2 credentials, etc. The `DATABASE_URL` is handled automatically when using Docker Compose (see below).
+
+### 3. Start Postgres + Adminer via Docker Desktop
+
+Make sure Docker Desktop is open and running, then:
+
+```bash
+docker compose up -d
+```
+
+This starts two containers:
+- **Postgres 16** on `localhost:5432`
+- **Adminer** (DB GUI) on `http://localhost:8080`
+
+**Adminer login:**
+| Field    | Value      |
+|----------|------------|
+| System   | PostgreSQL |
+| Server   | `db`       |
+| Username | `postgres` |
+| Password | `password` |
+| Database | `pod_db`   |
+
+### 4. Run database migrations
+
+```bash
+DATABASE_URL=postgresql://postgres:password@localhost:5432/pod_db npm run db:push
+```
+
+### 5. Start the API
+
+```bash
+npm run dev
+```
+
+The server hot-reloads via `nodemon` + `ts-node` and is available at `http://localhost:3001`.
+
+---
+
+## Environment variables
 
 | Variable                | Description                                                               |
 | ----------------------- | ------------------------------------------------------------------------- |
 | `SERVER_PORT`           | Port the API listens on (default `3001`)                                  |
 | `PRINTFUL_API_KEY`      | Printful private API key — **server-side only, never sent to the client** |
 | `PRINTFUL_STORE_ID`     | Printful store ID                                                         |
-| `AWS_REGION`            | AWS region for S3 (e.g. `us-east-1`)                                      |
+| `DATABASE_URL`          | PostgreSQL connection string                                              |
+| `AWS_REGION`            | AWS region for S3 (e.g. `us-east-1`)                                     |
 | `AWS_ACCESS_KEY_ID`     | AWS / R2 access key                                                       |
 | `AWS_SECRET_ACCESS_KEY` | AWS / R2 secret key                                                       |
 | `S3_BUCKET_NAME`        | S3 bucket name (public-read ACL required)                                 |
-| `CF_ACCOUNT_ID`         | Cloudflare account ID — set this instead of `AWS_REGION` when using R2    |
-| `R2_BUCKET_NAME`        | R2 bucket name (alternative to `S3_BUCKET_NAME`)                          |
-| `R2_PUBLIC_DOMAIN`      | Public base URL for R2 objects (e.g. `https://assets.yourdomain.com`)     |
+| `CF_ACCOUNT_ID`         | Cloudflare account ID — set this instead of `AWS_REGION` when using R2   |
+| `R2_BUCKET_NAME`        | R2 bucket name (alternative to `S3_BUCKET_NAME`)                         |
+| `R2_PUBLIC_DOMAIN`      | Public base URL for R2 objects (e.g. `https://assets.yourdomain.com`)    |
 | `FRONTEND_URL`          | Allowed CORS origin (no trailing slash)                                   |
 | `NODE_ENV`              | `development` or `production`                                             |
 
 ---
 
-## Dev start
+## Database commands
 
 ```bash
-npm run dev
+npm run db:push       # push schema directly to DB (dev)
+npm run db:generate   # generate a new migration file from schema changes
+npm run db:migrate    # apply pending migrations
+npm run db:studio     # open Drizzle Studio in the browser
 ```
-
-The server hot-reloads via `nodemon` + `ts-node`. It will be available at `http://localhost:3001`.
 
 ---
 
@@ -59,15 +106,13 @@ npm start       # runs the compiled JS
 
 ## Running alongside the Vite frontend
 
-1. Start this API first:
-
+1. Start Postgres and this API:
    ```bash
-   # in pod-api/
+   docker compose up -d
    npm run dev
    ```
 
 2. In the frontend repo, set the API base URL in its `.env`:
-
    ```
    VITE_API_URL=http://localhost:3001
    ```
@@ -78,7 +123,7 @@ npm start       # runs the compiled JS
    npm run dev
    ```
 
-The API's CORS policy reads `FRONTEND_URL` and will allow requests from `http://localhost:5173` by default.
+The API's CORS policy reads `FRONTEND_URL` and allows requests from `http://localhost:5173` by default.
 
 ---
 
@@ -101,6 +146,7 @@ The API's CORS policy reads `FRONTEND_URL` and will allow requests from `http://
 
 1. Push this repo to GitHub.
 2. In Railway, create a new project → **Deploy from GitHub repo** → select this repo.
-3. Set all environment variables from `.env.example` in the Railway dashboard under **Variables**.
-4. Railway will auto-detect `npm start` from `package.json` and run the compiled build.
-5. Set `FRONTEND_URL` to your deployed frontend URL so CORS is configured correctly.
+3. Add a **Postgres** plugin to the project — Railway injects `DATABASE_URL` automatically.
+4. Set all other environment variables from `.env.example` under **Variables**.
+5. Railway builds the Docker image using the `Dockerfile` and runs `scripts/start.sh`, which runs migrations then starts the server.
+6. Set `FRONTEND_URL` to your deployed frontend URL so CORS is configured correctly.
