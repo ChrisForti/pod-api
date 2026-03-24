@@ -21,9 +21,8 @@ COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
 COPY --from=builder /app/dist ./dist
-# Copy migrations + config so drizzle-kit migrate can run at startup
-COPY --from=builder /app/src/db/migrations ./src/db/migrations
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+# Migrations folder is embedded in dist/db/migrations at build time
+COPY --from=builder /app/src/db/migrations ./dist/db/migrations
 COPY scripts/start.sh ./start.sh
 RUN chmod +x ./start.sh
 
