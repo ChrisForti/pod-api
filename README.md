@@ -36,17 +36,18 @@ docker compose up -d
 ```
 
 This starts two containers:
+
 - **Postgres 16** on `localhost:5432`
 - **Adminer** (DB GUI) on `http://localhost:8080`
 
 **Adminer login:**
-| Field    | Value      |
+| Field | Value |
 |----------|------------|
-| System   | PostgreSQL |
-| Server   | `db`       |
+| System | PostgreSQL |
+| Server | `db` |
 | Username | `postgres` |
 | Password | `password` |
-| Database | `pod_db`   |
+| Database | `pod_db` |
 
 ### 4. Run database migrations
 
@@ -72,13 +73,13 @@ The server hot-reloads via `nodemon` + `ts-node` and is available at `http://loc
 | `PRINTFUL_API_KEY`      | Printful private API key — **server-side only, never sent to the client** |
 | `PRINTFUL_STORE_ID`     | Printful store ID                                                         |
 | `DATABASE_URL`          | PostgreSQL connection string                                              |
-| `AWS_REGION`            | AWS region for S3 (e.g. `us-east-1`)                                     |
+| `AWS_REGION`            | AWS region for S3 (e.g. `us-east-1`)                                      |
 | `AWS_ACCESS_KEY_ID`     | AWS / R2 access key                                                       |
 | `AWS_SECRET_ACCESS_KEY` | AWS / R2 secret key                                                       |
 | `S3_BUCKET_NAME`        | S3 bucket name (public-read ACL required)                                 |
-| `CF_ACCOUNT_ID`         | Cloudflare account ID — set this instead of `AWS_REGION` when using R2   |
-| `R2_BUCKET_NAME`        | R2 bucket name (alternative to `S3_BUCKET_NAME`)                         |
-| `R2_PUBLIC_DOMAIN`      | Public base URL for R2 objects (e.g. `https://assets.yourdomain.com`)    |
+| `CF_ACCOUNT_ID`         | Cloudflare account ID — set this instead of `AWS_REGION` when using R2    |
+| `R2_BUCKET_NAME`        | R2 bucket name (alternative to `S3_BUCKET_NAME`)                          |
+| `R2_PUBLIC_DOMAIN`      | Public base URL for R2 objects (e.g. `https://assets.yourdomain.com`)     |
 | `FRONTEND_URL`          | Allowed CORS origin (no trailing slash)                                   |
 | `NODE_ENV`              | `development` or `production`                                             |
 
@@ -107,12 +108,14 @@ npm start       # runs the compiled JS
 ## Running alongside the Vite frontend
 
 1. Start Postgres and this API:
+
    ```bash
    docker compose up -d
    npm run dev
    ```
 
 2. In the frontend repo, set the API base URL in its `.env`:
+
    ```
    VITE_API_URL=http://localhost:3001
    ```

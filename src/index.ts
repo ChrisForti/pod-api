@@ -6,12 +6,7 @@ import { createApp } from "./app";
 // ─────────────────────────────────────────
 // Validate required environment variables at startup
 // ─────────────────────────────────────────
-const REQUIRED_ENV = [
-  "PRINTFUL_API_KEY",
-  "PRINTFUL_STORE_ID",
-  "S3_BUCKET_NAME",
-  "DATABASE_URL",
-];
+const REQUIRED_ENV = ["PRINTFUL_API_KEY", "PRINTFUL_STORE_ID", "DATABASE_URL"];
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
     console.error(`[startup] Missing required environment variable: ${key}`);
