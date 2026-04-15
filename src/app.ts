@@ -19,10 +19,19 @@ export function createApp() {
     }),
   );
 
-  const allowedOrigin = process.env.FRONTEND_URL ?? "http://localhost:5173";
+  const allowedOrigins = [
+    process.env.FRONTEND_URL ?? "http://localhost:5173",
+    "http://localhost:5173",
+    "http://localhost:4173",
+  ].filter(Boolean);
   app.use(
     cors({
-      origin: allowedOrigin,
+      origin: (origin, callback) => {
+        // Allow requests with no origin (curl, Postman, server-to-server)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      },
       methods: ["GET", "POST", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
