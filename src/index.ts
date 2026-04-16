@@ -15,7 +15,10 @@ for (const key of REQUIRED_ENV) {
 }
 
 const app = createApp();
-const PORT = parseInt(process.env.PORT ?? process.env.SERVER_PORT ?? "3001", 10);
+const PORT = parseInt(
+  process.env.PORT ?? process.env.SERVER_PORT ?? "3001",
+  10,
+);
 const allowedOrigin = process.env.FRONTEND_URL ?? "http://localhost:5173";
 
 app.listen(PORT, () => {
