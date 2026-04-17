@@ -11,6 +11,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/webp",
   "image/gif",
+  "image/svg+xml",
 ]);
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -57,7 +58,7 @@ export function validateUpload(
   if (!ALLOWED_MIME_TYPES.has(mimetype)) {
     return {
       valid: false,
-      reason: "Invalid file type. Allowed: PNG, JPEG, WebP, GIF",
+      reason: "Invalid file type. Allowed: PNG, JPEG, WebP, GIF, SVG",
     };
   }
   if (size > MAX_FILE_SIZE) {

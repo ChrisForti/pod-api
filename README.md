@@ -67,21 +67,23 @@ The server hot-reloads via `nodemon` + `ts-node` and is available at `http://loc
 
 ## Environment variables
 
-| Variable                | Description                                                               |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `SERVER_PORT`           | Port the API listens on (default `3001`)                                  |
-| `PRINTFUL_API_KEY`      | Printful private API key — **server-side only, never sent to the client** |
-| `PRINTFUL_STORE_ID`     | Printful store ID                                                         |
-| `DATABASE_URL`          | PostgreSQL connection string                                              |
-| `AWS_REGION`            | AWS region for S3 (e.g. `us-east-1`)                                      |
-| `AWS_ACCESS_KEY_ID`     | AWS / R2 access key                                                       |
-| `AWS_SECRET_ACCESS_KEY` | AWS / R2 secret key                                                       |
-| `S3_BUCKET_NAME`        | S3 bucket name (public-read ACL required)                                 |
-| `CF_ACCOUNT_ID`         | Cloudflare account ID — set this instead of `AWS_REGION` when using R2    |
-| `R2_BUCKET_NAME`        | R2 bucket name (alternative to `S3_BUCKET_NAME`)                          |
-| `R2_PUBLIC_DOMAIN`      | Public base URL for R2 objects (e.g. `https://assets.yourdomain.com`)     |
-| `FRONTEND_URL`          | Allowed CORS origin (no trailing slash)                                   |
-| `NODE_ENV`              | `development` or `production`                                             |
+| Variable                | Description                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| `SERVER_PORT`           | Port the API listens on (default `3001`)                                        |
+| `PRINTFUL_API_KEY`      | Printful private API key — **server-side only, never sent to the client**       |
+| `PRINTFUL_STORE_ID`     | Printful store ID                                                               |
+| `DATABASE_URL`          | PostgreSQL connection string                                                    |
+| `STRIPE_SECRET_KEY`     | Stripe secret key (`sk_test_…` / `sk_live_…`) from dashboard.stripe.com/apikeys |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_…`) — see **Stripe webhooks** below       |
+| `AWS_REGION`            | AWS region for S3 (e.g. `us-east-1`)                                            |
+| `AWS_ACCESS_KEY_ID`     | AWS / R2 access key                                                             |
+| `AWS_SECRET_ACCESS_KEY` | AWS / R2 secret key                                                             |
+| `S3_BUCKET_NAME`        | S3 bucket name (public-read ACL required)                                       |
+| `CF_ACCOUNT_ID`         | Cloudflare account ID — set this instead of `AWS_REGION` when using R2          |
+| `R2_BUCKET_NAME`        | R2 bucket name (alternative to `S3_BUCKET_NAME`)                                |
+| `R2_PUBLIC_DOMAIN`      | Public base URL for R2 objects (e.g. `https://assets.yourdomain.com`)           |
+| `FRONTEND_URL`          | Allowed CORS origin (no trailing slash)                                         |
+| `NODE_ENV`              | `development` or `production`                                                   |
 
 ---
 
@@ -132,16 +134,47 @@ The API's CORS policy reads `FRONTEND_URL` and allows requests from `http://loca
 
 ## API routes
 
-| Method | Path                     | Description                                          |
-| ------ | ------------------------ | ---------------------------------------------------- |
-| `GET`  | `/api/products`          | All products from Printful (cached 5 min)            |
-| `GET`  | `/api/products/:id`      | Single product with variants                         |
-| `POST` | `/api/upload/logo`       | Upload artwork (`multipart/form-data`, field `file`) |
-| `POST` | `/api/mockups/generate`  | Generate a Printful mockup                           |
-| `POST` | `/api/orders`            | Create an order (rate-limited: 10/min/IP)            |
-| `GET`  | `/api/orders/:orderId`   | Fetch normalized order status                        |
-| `POST` | `/api/webhooks/printful` | Receive Printful webhook events                      |
-| `GET`  | `/health`                | Health-check (used by Railway)                       |
+| Method | Path                     | Description                                                     |
+| ------ | ------------------------ | --------------------------------------------------------------- |
+| `GET`  | `/api/products`          | All products from Printful v2 (cached 5 min)                    |
+| `GET`  | `/api/products/:id`      | Single product with variants                                    |
+| `POST` | `/api/checkout`          | Create a Stripe Checkout Session — returns `{ url, sessionId }` |
+| `POST` | `/api/upload/logo`       | Upload artwork (`multipart/form-data`, field `file`)            |
+| `POST` | `/api/mockups/generate`  | Generate a Printful mockup                                      |
+| `POST` | `/api/orders`            | Create a Printful order (rate-limited: 10/min/IP)               |
+| `GET`  | `/api/orders/:orderId`   | Fetch normalized order status                                   |
+| `POST` | `/api/webhooks/printful` | Receive Printful webhook events                                 |
+| `POST` | `/api/webhooks/stripe`   | Receive Stripe webhook events (HMAC-verified)                   |
+| `GET`  | `/health`                | Health-check (used by Railway)                                  |
+
+---
+
+## Checkout flow
+
+```
+Frontend: POST /api/checkout { items }
+  → returns { url, sessionId }
+Frontend: redirect user to url (Stripe-hosted page)
+  → on success: Stripe redirects to /checkout/success?session_id=…
+  → on cancel:  Stripe redirects to /checkout/cancel
+Frontend: POST /api/orders { items, shipping } to create the Printful order
+Stripe:   POST /api/webhooks/stripe (checkout.session.completed) — logged to webhook_events
+```
+
+---
+
+## Stripe webhooks
+
+**Local dev** — use the Stripe CLI to forward events to your local server:
+
+```bash
+stripe listen --forward-to localhost:3001/api/webhooks/stripe
+# prints whsec_… → set as STRIPE_WEBHOOK_SECRET in .env
+```
+
+**Production** — in [dashboard.stripe.com/webhooks](https://dashboard.stripe.com/webhooks), add endpoint `https://your-domain.com/api/webhooks/stripe`, select `checkout.session.completed`, then copy the signing secret to `STRIPE_WEBHOOK_SECRET`.
+
+---
 
 ---
 

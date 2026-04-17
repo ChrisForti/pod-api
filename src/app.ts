@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 
 import catalogRouter from "./routes/catalog";
+import checkoutRouter from "./routes/checkout";
 import uploadRouter from "./routes/upload";
 import mockupsRouter from "./routes/mockups";
 import ordersRouter from "./routes/orders";
@@ -38,12 +39,17 @@ export function createApp() {
     }),
   );
 
-  // JSON body parser — NOT applied to /webhooks (needs raw body for HMAC if added later)
-  app.use(/^\/api\/(?!webhooks)/, express.json({ limit: "1mb" }));
+  // Raw body for Stripe webhook signature verification — must come BEFORE the global JSON parser
+  // so body-parser skips re-reading the already-consumed stream for this path.
+  app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }));
+
+  // Global JSON parser — body-parser checks req._body and skips if already parsed (e.g. stripe above)
+  app.use(express.json({ limit: "1mb" }));
 
   app.use("/api/products", catalogRouter);
+  app.use("/api/checkout", checkoutRouter);
   app.use("/api/upload", uploadRouter);
-  app.use("/api/mockups", mockupsRouter);
+  app.use("/api/mockup", mockupsRouter);
   app.use("/api/orders", ordersRouter);
   app.use("/api/webhooks", webhooksRouter);
 

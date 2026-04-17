@@ -85,12 +85,28 @@ function mapVariant(v: Record<string, unknown>): ProductVariant {
   const colorOpt = options.find((o) => o.id === "color");
   const sizeOpt = options.find((o) => o.id === "size");
 
+  // Sync variants from /store/products/:id don't have an options array —
+  // they encode color and size in `name` as "Color / Size" (e.g. "White / XS").
+  // Fall back to splitting the name when options lookup yields nothing.
+  let color = cleanString(colorOpt?.value);
+  let size = cleanString(sizeOpt?.value);
+  if (
+    (!color || !size) &&
+    typeof v.name === "string" &&
+    v.name.includes(" / ")
+  ) {
+    const [namePart1, namePart2, ...rest] = v.name.split(" / ");
+    // Printful convention: first segment is color, second is size
+    if (!color) color = cleanString(namePart1);
+    if (!size) size = cleanString([namePart2, ...rest].join(" / "));
+  }
+
   return {
     id: Number(v.id),
     sku: typeof v.sku === "string" ? v.sku : undefined,
     name: cleanString(v.name),
-    color: cleanString(colorOpt?.value),
-    size: cleanString(sizeOpt?.value),
+    color,
+    size,
     price: parseFloat(String(v.retail_price ?? "0")),
     inStock: v.is_ignored !== true,
   };
@@ -118,7 +134,7 @@ function mapSyncProduct(item: Record<string, unknown>): Product {
 
 /** Fetch all sync products in the store. */
 export async function getProducts(): Promise<Product[]> {
-  const result = await pfFetch<Record<string, unknown>[]>("/store/products");
+  const result = await pfFetch<Record<string, unknown>[]>("/v2/sync/products");
   return result.map(mapSyncProduct);
 }
 
@@ -128,7 +144,7 @@ export async function getProduct(id: number | string): Promise<Product | null> {
     const result = await pfFetch<{
       sync_product: Record<string, unknown>;
       sync_variants: Record<string, unknown>[];
-    }>(`/store/products/${id}`);
+    }>(`/v2/sync/products/${id}`);
 
     const p = result.sync_product;
     const variants = result.sync_variants.map(mapVariant);
@@ -154,12 +170,21 @@ export async function getProduct(id: number | string): Promise<Product | null> {
   }
 }
 
+/** Resolve the catalog product_id from a sync_variant_id. */
+async function getProductIdForVariant(variantId: number): Promise<number> {
+  const result = await pfFetch<{
+    sync_variant: { product: { product_id: number } };
+  }>(`/store/variants/${variantId}`);
+  return result.sync_variant.product.product_id;
+}
+
 /** POST /mockup-generator/create-task/{productId} — returns the task key. */
 export async function createMockupTask(
-  productId: number,
   variantId: number,
   imageUrl: string,
+  placement: "front" | "back" = "front",
 ): Promise<string> {
+  const productId = await getProductIdForVariant(variantId);
   const result = await pfFetch<{ task_key: string }>(
     `/mockup-generator/create-task/${productId}`,
     {
@@ -167,7 +192,7 @@ export async function createMockupTask(
       body: JSON.stringify({
         variant_ids: [variantId],
         format: "jpg",
-        files: [{ placement: "front", image_url: imageUrl }],
+        files: [{ placement, image_url: imageUrl }],
       }),
     },
   );

@@ -1,24 +1,32 @@
 import { Router, Request, Response } from "express";
 import { createMockupTask, pollMockupTask } from "../services/printful";
-import { validateMockupRequest } from "../lib/validate";
+import { isPositiveInt, isHttpUrl } from "../lib/validate";
 
 const router = Router();
 
-// POST /api/mockups/generate
-router.post("/generate", async (req: Request, res: Response) => {
-  const validation = validateMockupRequest(req.body);
-  if (!validation.valid) {
-    res.status(400).json({ error: validation.error });
+// POST /api/mockup
+// Contract: { variantId, artworkUrl, placement? }
+// Response: { mockupUrl }
+router.post("/", async (req: Request, res: Response) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+
+  if (!isPositiveInt(body.variantId)) {
+    res.status(400).json({ error: "variantId must be a positive integer" });
     return;
   }
-
-  const { productId, variantId, customization } = validation.data;
+  if (!isHttpUrl(body.artworkUrl)) {
+    res
+      .status(400)
+      .json({ error: "artworkUrl must be a valid http/https URL" });
+    return;
+  }
+  const placement = body.placement === "back" ? "back" : "front";
 
   try {
     const taskKey = await createMockupTask(
-      productId,
-      variantId,
-      customization.logoUrl!,
+      Number(body.variantId),
+      String(body.artworkUrl),
+      placement,
     );
     const mockupUrl = await pollMockupTask(taskKey);
     res.json({ mockupUrl });

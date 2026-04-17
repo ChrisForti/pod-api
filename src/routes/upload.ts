@@ -29,12 +29,12 @@ router.post(
     }
 
     try {
-      const logoUrl = await uploadLogo(
+      const url = await uploadLogo(
         req.file.buffer,
         req.file.mimetype,
         req.file.originalname,
       );
-      res.json({ logoUrl });
+      res.json({ url });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed";
       res.status(500).json({ error: message });
